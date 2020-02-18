@@ -1,5 +1,9 @@
 # uniset
 
+[![Documentation](https://docs.rs/uniset/badge.svg)](https://docs.rs/uniset)
+[![Crates](https://img.shields.io/crates/v/uniset.svg)](https://crates.io/crates/uniset)
+[![Actions Status](https://github.com/udoprog/uniset/workflows/Rust/badge.svg)](https://github.com/udoprog/uniset/actions)
+
 A hierarchical, growable bit set with support for in-place atomic operations.
 
 The idea is based on [hibitset], but dynamically growing instead of using a
