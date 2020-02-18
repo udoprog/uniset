@@ -1,3 +1,4 @@
+#![deny(missing_docs)]
 //! A hierarchical, growable bit set with support for in-place atomic operations.
 //!
 //! The idea is based on [hibitset], but dynamically growing instead of using a
