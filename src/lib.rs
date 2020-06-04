@@ -1037,7 +1037,7 @@ impl Layer {
 
         let mut vec =
             mem::ManuallyDrop::new(unsafe { Vec::from_raw_parts(self.bits, self.cap, self.cap) });
-        vec.reserve(new - self.cap);
+        vec.reserve_exact(new - self.cap);
 
         // Initialize new values.
         for _ in self.cap..new {
@@ -1704,5 +1704,14 @@ mod tests {
             round_capacity_up(std::usize::MAX >> 1)
         );
         assert_eq!(std::usize::MAX, round_capacity_up((1usize << 63) + 1));
+    }
+
+    #[test]
+    fn test_grow_one_at_a_time() {
+        let mut active = BitSet::new();
+
+        for i in 0..128 {
+            active.reserve(i);
+        }
     }
 }
