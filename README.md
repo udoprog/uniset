@@ -1,9 +1,5 @@
 # uniset
 
-[![Documentation](https://docs.rs/uniset/badge.svg)](https://docs.rs/uniset)
-[![Crates](https://img.shields.io/crates/v/uniset.svg)](https://crates.io/crates/uniset)
-[![Actions Status](https://github.com/udoprog/uniset/workflows/Rust/badge.svg)](https://github.com/udoprog/uniset/actions)
-
 A hierarchical, growable bit set with support for in-place atomic operations.
 
 The idea is based on [hibitset], but dynamically growing instead of using a
@@ -13,6 +9,8 @@ sharing between the local and atomic bitset variants.
 
 [hibitset]: https://docs.rs/hibitset
 
+<br>
+
 ## Features
 
 * `vec-safety` - Avoid relying on the assumption that `&mut Vec<T>` can be
@@ -21,7 +19,9 @@ sharing between the local and atomic bitset variants.
 
 [issue #1]: https://github.com/udoprog/unicycle/issues/1
 
-# Examples
+<br>
+
+## Examples
 
 ```rust
 use uniset::BitSet;

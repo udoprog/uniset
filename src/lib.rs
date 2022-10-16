@@ -1,4 +1,3 @@
-#![deny(missing_docs)]
 //! A hierarchical, growable bit set with support for in-place atomic operations.
 //!
 //! The idea is based on [hibitset], but dynamically growing instead of using a
@@ -8,6 +7,8 @@
 //!
 //! [hibitset]: https://docs.rs/hibitset
 //!
+//! <br>
+//!
 //! ## Features
 //!
 //! * `vec-safety` - Avoid relying on the assumption that `&mut Vec<T>` can be
@@ -16,7 +17,9 @@
 //!
 //! [issue #1]: https://github.com/udoprog/unicycle/issues/1
 //!
-//! # Examples
+//! <br>
+//!
+//! ## Examples
 //!
 //! ```rust
 //! use uniset::BitSet;
@@ -36,6 +39,8 @@
 //! assert_eq!(vec![127, 128], set.drain().collect::<Vec<_>>());
 //! assert!(set.is_empty());
 //! ```
+
+#![deny(missing_docs)]
 
 use std::{
     fmt, iter, mem, ops, slice,
