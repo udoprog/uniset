@@ -109,7 +109,7 @@ pub fn bitset_benchmark(c: &mut Criterion) {
             group.bench_with_input(BenchmarkId::new("hibitset", n), n, |b, n| {
                 use hibitset::DrainableBitSet as _;
                 let set = hibitset(..*n);
-                b.iter(|| (&mut set.clone()).drain().collect::<Vec<_>>());
+                b.iter(|| set.clone().drain().collect::<Vec<_>>());
             });
         }
     }

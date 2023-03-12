@@ -46,6 +46,7 @@
 //! ```
 
 #![deny(missing_docs)]
+#![allow(clippy::identity_op)]
 
 use std::{
     fmt, iter, mem, ops, slice,
@@ -1184,7 +1185,7 @@ impl<'a> PartialEq<Layer> for &'a [usize] {
     }
 }
 
-impl<'a> PartialEq<Layer> for Vec<usize> {
+impl PartialEq<Layer> for Vec<usize> {
     fn eq(&self, other: &Layer) -> bool {
         self.as_slice() == other.as_slice()
     }
@@ -1333,7 +1334,7 @@ fn round_capacity_up(cap: usize) -> usize {
     let cap = if cap == 1usize << cap.trailing_zeros() {
         cap
     } else {
-        1usize << BITS - cap.leading_zeros() as usize
+        1usize << (BITS - cap.leading_zeros() as usize)
     };
 
     usize::max(16, cap)
@@ -1451,6 +1452,13 @@ mod vec_safety {
         }
     }
 
+    impl<T> Default for Layers<T> {
+        #[inline]
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl<T> Clone for Layers<T>
     where
         T: Clone,
@@ -1474,8 +1482,9 @@ mod vec_safety {
         type IntoIter = slice::IterMut<'a, T>;
         type Item = &'a mut T;
 
+        #[inline]
         fn into_iter(self) -> Self::IntoIter {
-            self.as_mut_slice().into_iter()
+            self.as_mut_slice().iter_mut()
         }
     }
 
@@ -1483,8 +1492,9 @@ mod vec_safety {
         type IntoIter = slice::Iter<'a, T>;
         type Item = &'a T;
 
+        #[inline]
         fn into_iter(self) -> Self::IntoIter {
-            self.as_slice().into_iter()
+            self.as_slice().iter()
         }
     }
 
