@@ -9,7 +9,7 @@ documentation = "https://docs.rs/uniset"
 readme = "README.md"
 homepage = "https://github.com/udoprog/uniset"
 repository = "https://github.com/udoprog/uniset"
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 keywords = ["bitset", "containers"]
 categories = ["algorithms"]
 
