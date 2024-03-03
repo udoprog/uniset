@@ -1554,13 +1554,13 @@ mod tests {
         assert!(set.test(1023));
         assert!(!set.test(1022));
 
-        let mut layer0 = vec![0usize; 16];
+        let mut layer0 = [0usize; 16];
         layer0[0] = 1 << 1;
         layer0[1] = 1;
         layer0[2] = 1 << 1;
         layer0[15] = 1 << 63;
 
-        let mut layer1 = vec![0usize; 1];
+        let mut layer1 = [0usize; 1];
         layer1[0] = 1 << 15 | 1 << 2 | 1 << 1 | 1;
 
         assert_eq!(vec![&layer0[..], &layer1[..]], set.as_slice());
