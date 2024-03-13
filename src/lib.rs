@@ -824,6 +824,20 @@ impl AtomicBitSet {
         }
     }
 
+    /// Get the current capacity of the bitset.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use uniset::AtomicBitSet;
+    ///
+    /// let set = AtomicBitSet::new();
+    /// assert_eq!(0, set.capacity());
+    /// ```
+    pub fn capacity(&self) -> usize {
+        self.cap
+    }
+
     /// Set the given bit atomically.
     ///
     /// We can do this to an [AtomicBitSet] since the required modifications
