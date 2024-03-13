@@ -66,7 +66,10 @@ type Layers<T> = Vec<T>;
 ///
 /// Implementer must assert that the implementing type has an identical layout
 /// to a [Layer].
-unsafe trait IsLayer {}
+unsafe trait CoerceLayer {
+    /// The target layer being coerced into.
+    type Target;
+}
 
 /// Bits in a single usize.
 const BITS: usize = mem::size_of::<usize>() * 8;
@@ -133,9 +136,6 @@ struct LayerLayout {
 #[derive(Clone)]
 pub struct BitSet {
     /// Layers of bits.
-    // TODO: Consider breaking this up into a (pointer, len, cap) tuple since
-    // I'm not entirely sure this guarantees that the memory layout of `BitSet`
-    // is the same as `AtomicBitSet`, even though `Layer` and `AtomicLayer` is.
     layers: Layers<Layer>,
     /// The capacity of the bitset in number of bits it can store.
     cap: usize,
@@ -957,7 +957,9 @@ pub struct Layer {
     cap: usize,
 }
 
-unsafe impl IsLayer for Layer {}
+unsafe impl CoerceLayer for Layer {
+    type Target = AtomicLayer;
+}
 unsafe impl Send for Layer {}
 unsafe impl Sync for Layer {}
 
@@ -1247,7 +1249,9 @@ struct AtomicLayer {
     cap: usize,
 }
 
-unsafe impl IsLayer for AtomicLayer {}
+unsafe impl CoerceLayer for AtomicLayer {
+    type Target = Layer;
+}
 unsafe impl Send for AtomicLayer {}
 unsafe impl Sync for AtomicLayer {}
 
@@ -1357,8 +1361,7 @@ fn round_capacity_up(cap: usize) -> usize {
 /// an identical layout to the converted type.
 fn convert_layers<T, U>(vec: Layers<T>) -> Layers<U>
 where
-    T: IsLayer,
-    U: IsLayer,
+    T: CoerceLayer<Target = U>,
 {
     debug_assert!(mem::size_of::<T>() == mem::size_of::<U>());
     debug_assert!(mem::align_of::<T>() == mem::align_of::<U>());
@@ -1695,7 +1698,9 @@ mod tests {
             vec![0, 32, 64, 3030, 4095, 50_000, 102110, 203020, 500000, 803020, 900900],
             51
         );
+        #[cfg(not(miri))]
         drain_test!(1_000_000, (0..1_000_000).collect::<Vec<usize>>(), 1_031_748);
+        #[cfg(not(miri))]
         drain_test!(
             10_000_000,
             vec![0, 32, 64, 3030, 4095, 50_000, 102110, 203020, 500000, 803020, 900900, 9_009_009],
@@ -1717,11 +1722,13 @@ mod tests {
             vec![0, 32, 64, 3030, 4095, 50_000, 102110, 203020, 500000, 803020, 900900],
             52
         );
+        #[cfg(not(miri))]
         iter_test!(
             10_000_000,
             vec![0, 32, 64, 3030, 4095, 50_000, 102110, 203020, 500000, 803020, 900900, 9_009_009],
             59
         );
+        #[cfg(not(miri))]
         iter_test!(1_000_000, (0..1_000_000).collect::<Vec<usize>>(), 1_031_749);
     }
 
