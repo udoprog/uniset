@@ -58,9 +58,10 @@ use self::vec_safety::Layers;
 type Layers<T> = Vec<T>;
 
 /// A private marker trait that promises that the implementing type has an
-/// identical memory layout to a Layer].
+/// identical memory layout to another Layer].
 ///
-/// The only purpose of this trait is to server to make convert_layer safer.
+/// The only purpose of this trait is to server to make [`convert_layers`]
+/// safer.
 ///
 /// # Safety
 ///
@@ -1385,8 +1386,8 @@ mod vec_safety {
     /// goal is to provide an equivalent compatible API as Vec<T>, so look
     /// there for documentation.
     #[repr(C)]
-    pub struct Layers<T> {
-        data: *const T,
+    pub(super) struct Layers<T> {
+        data: *mut T,
         len: usize,
         cap: usize,
         _marker: marker::PhantomData<T>,
@@ -1397,54 +1398,50 @@ mod vec_safety {
 
     impl<T> Layers<T> {
         /// Note: Can't be a constant function :(.
-        pub fn new() -> Self {
-            let vec = mem::ManuallyDrop::new(Vec::<T>::new());
+        pub(super) fn new() -> Self {
+            let mut vec = mem::ManuallyDrop::new(Vec::<T>::new());
 
             Self {
-                data: vec.as_ptr(),
+                data: vec.as_mut_ptr(),
                 len: vec.len(),
                 cap: vec.capacity(),
                 _marker: marker::PhantomData,
             }
         }
 
-        pub fn reserve_exact(&mut self, cap: usize) {
-            self.as_vec(|vec| vec.reserve_exact(cap));
+        pub(super) fn as_mut_ptr(&mut self) -> *mut T {
+            self.data
         }
 
-        pub fn as_mut_ptr(&mut self) -> *mut T {
-            self.data as *mut T
-        }
-
-        pub fn len(&self) -> usize {
+        pub(super) fn len(&self) -> usize {
             self.len
         }
 
-        pub fn is_empty(&self) -> bool {
+        pub(super) fn is_empty(&self) -> bool {
             self.len == 0
         }
 
-        pub fn capacity(&self) -> usize {
+        pub(super) fn capacity(&self) -> usize {
             self.cap
         }
 
-        pub fn as_mut_slice(&mut self) -> &mut [T] {
-            unsafe { slice::from_raw_parts_mut(self.data as *mut T, self.len) }
+        pub(super) fn as_mut_slice(&mut self) -> &mut [T] {
+            unsafe { slice::from_raw_parts_mut(self.data, self.len) }
         }
 
-        pub fn as_slice(&self) -> &[T] {
-            unsafe { slice::from_raw_parts(self.data, self.len) }
+        pub(super) fn as_slice(&self) -> &[T] {
+            unsafe { slice::from_raw_parts(self.data as *const T, self.len) }
         }
 
-        pub fn last(&self) -> Option<&T> {
+        pub(super) fn last(&self) -> Option<&T> {
             self.as_slice().last()
         }
 
-        pub fn push(&mut self, value: T) {
+        pub(super) fn push(&mut self, value: T) {
             self.as_vec(|vec| vec.push(value));
         }
 
-        pub unsafe fn from_raw_parts(data: *mut T, len: usize, cap: usize) -> Self {
+        pub(super) unsafe fn from_raw_parts(data: *mut T, len: usize, cap: usize) -> Self {
             Self {
                 data,
                 len,
@@ -1459,7 +1456,7 @@ mod vec_safety {
             F: FnOnce(&mut Vec<T>),
         {
             let mut vec = mem::ManuallyDrop::new(unsafe {
-                Vec::from_raw_parts(self.data as *mut T, self.len, self.cap)
+                Vec::from_raw_parts(self.data, self.len, self.cap)
             });
             f(&mut vec);
             self.data = vec.as_mut_ptr();
@@ -1480,13 +1477,13 @@ mod vec_safety {
         T: Clone,
     {
         fn clone(&self) -> Self {
-            let vec = mem::ManuallyDrop::new(unsafe {
-                Vec::from_raw_parts(self.data as *mut T, self.len, self.cap)
+            let mut vec = mem::ManuallyDrop::new(unsafe {
+                Vec::from_raw_parts(self.data, self.len, self.cap)
             })
             .clone();
 
             Self {
-                data: vec.as_ptr(),
+                data: vec.as_mut_ptr(),
                 len: vec.len(),
                 cap: vec.capacity(),
                 _marker: marker::PhantomData,
@@ -1539,7 +1536,7 @@ mod vec_safety {
 
     impl<T> Drop for Layers<T> {
         fn drop(&mut self) {
-            drop(unsafe { Vec::from_raw_parts(self.data as *mut T, self.len, self.cap) });
+            drop(unsafe { Vec::from_raw_parts(self.data, self.len, self.cap) });
         }
     }
 }
