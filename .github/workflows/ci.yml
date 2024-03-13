@@ -23,6 +23,8 @@ jobs:
       with:
         toolchain: ${{matrix.rust}}
     - run: cargo build
+    - run: cargo build --all-features
+    - run: cargo build --no-default-features
     - run: cargo test --workspace --all-targets
       if: matrix.rust == 'stable'
     - run: cargo test --workspace --doc
