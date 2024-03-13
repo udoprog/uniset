@@ -2,14 +2,12 @@
 //! [<img alt="crates.io" src="https://img.shields.io/crates/v/uniset.svg?style=for-the-badge&color=fc8d62&logo=rust" height="20">](https://crates.io/crates/uniset)
 //! [<img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-uniset-66c2a5?style=for-the-badge&logoColor=white&logo=data:image/svg+xml;base64,PHN2ZyByb2xlPSJpbWciIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDUxMiA1MTIiPjxwYXRoIGZpbGw9IiNmNWY1ZjUiIGQ9Ik00ODguNiAyNTAuMkwzOTIgMjE0VjEwNS41YzAtMTUtOS4zLTI4LjQtMjMuNC0zMy43bC0xMDAtMzcuNWMtOC4xLTMuMS0xNy4xLTMuMS0yNS4zIDBsLTEwMCAzNy41Yy0xNC4xIDUuMy0yMy40IDE4LjctMjMuNCAzMy43VjIxNGwtOTYuNiAzNi4yQzkuMyAyNTUuNSAwIDI2OC45IDAgMjgzLjlWMzk0YzAgMTMuNiA3LjcgMjYuMSAxOS45IDMyLjJsMTAwIDUwYzEwLjEgNS4xIDIyLjEgNS4xIDMyLjIgMGwxMDMuOS01MiAxMDMuOSA1MmMxMC4xIDUuMSAyMi4xIDUuMSAzMi4yIDBsMTAwLTUwYzEyLjItNi4xIDE5LjktMTguNiAxOS45LTMyLjJWMjgzLjljMC0xNS05LjMtMjguNC0yMy40LTMzLjd6TTM1OCAyMTQuOGwtODUgMzEuOXYtNjguMmw4NS0zN3Y3My4zek0xNTQgMTA0LjFsMTAyLTM4LjIgMTAyIDM4LjJ2LjZsLTEwMiA0MS40LTEwMi00MS40di0uNnptODQgMjkxLjFsLTg1IDQyLjV2LTc5LjFsODUtMzguOHY3NS40em0wLTExMmwtMTAyIDQxLjQtMTAyLTQxLjR2LS42bDEwMi0zOC4yIDEwMiAzOC4ydi42em0yNDAgMTEybC04NSA0Mi41di03OS4xbDg1LTM4Ljh2NzUuNHptMC0xMTJsLTEwMiA0MS40LTEwMi00MS40di0uNmwxMDItMzguMiAxMDIgMzguMnYuNnoiPjwvcGF0aD48L3N2Zz4K" height="20">](https://docs.rs/uniset)
 //!
-//! A hierarchical, growable bit set with support for in-place atomic operations.
+//! A hierarchical, growable bit set with support for in-place atomic
+//! operations.
 //!
-//! The idea is based on [hibitset], but dynamically growing instead of using a
-//! fixed capacity.
-//! By being careful with the data layout, we can also support structural
-//! sharing between the local and atomic bitset variants.
-//!
-//! [hibitset]: https://docs.rs/hibitset
+//! The idea is based on [hibitset], but dynamically growing instead of having a
+//! fixed capacity. By being careful with the underlying data layout, we also
+//! support structural sharing between the [local] and [atomic] bitsets.
 //!
 //! <br>
 //!
@@ -19,13 +17,11 @@
 //!   safely coerced to `&mut Vec<U>` if `T` and `U` have an identical memory
 //!   layouts (enabled by default, [issue #1]).
 //!
-//! [issue #1]: https://github.com/udoprog/unicycle/issues/1
-//!
 //! <br>
 //!
 //! ## Examples
 //!
-//! ```rust
+//! ```
 //! use uniset::BitSet;
 //!
 //! let mut set = BitSet::new();
@@ -43,6 +39,11 @@
 //! assert_eq!(vec![127, 128], set.drain().collect::<Vec<_>>());
 //! assert!(set.is_empty());
 //! ```
+//!
+//! [issue #1]: https://github.com/udoprog/unicycle/issues/1
+//! [hibitset]: https://docs.rs/hibitset
+//! [local]: https://docs.rs/uniset/latest/uniset/struct.BitSet.html
+//! [atomic]: https://docs.rs/uniset/latest/uniset/struct.AtomicBitSet.html
 
 #![deny(missing_docs)]
 #![allow(clippy::identity_op)]
@@ -120,19 +121,18 @@ struct LayerLayout {
 
 /// A sparse, layered bit set.
 ///
-/// Layered bit sets support exceedingly efficient iteration, union, and
-/// intersection operations since they maintain summary layers summarizing the
-/// bits which are sets in layers below it.
+/// Layered bit sets support efficient iteration, union, and intersection
+/// operations since they maintain summary layers of the bits which are set in
+/// layers below it.
 ///
-/// [BitSet] and [AtomicBitSet]'s are guaranteed to have an identical memory
-/// layout, so while it would require `unsafe`, transmuting or coercing between
-/// the two is sound assuming the proper synchronization is respected.
+/// [`BitSet`] and [`AtomicBitSet`]'s are guaranteed to have an identical memory
+/// layout, so they support zero-cost back and forth conversion.
 ///
-/// A [BitSet] provides the following methods for converting to an
-/// [AtomicBitSet]: [into_atomic] and [as_atomic].
+/// The [`into_atomic`] and [`as_atomic`] methods are provided for converting to
+/// an [`AtomicBitSet`].
 ///
-/// [into_atomic]: BitSet::into_atomic
-/// [as_atomic]: BitSet::as_atomic
+/// [`into_atomic`]: BitSet::into_atomic
+/// [`as_atomic`]: BitSet::as_atomic
 #[repr(C)]
 #[derive(Clone)]
 pub struct BitSet {
@@ -147,7 +147,7 @@ impl BitSet {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let mut set = BitSet::new();
@@ -161,11 +161,11 @@ impl BitSet {
         }
     }
 
-    /// Construct a new, empty [BitSet] with the specified capacity.
+    /// Construct a new, empty [`BitSet`] with the specified capacity.
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let mut set = BitSet::with_capacity(1024);
@@ -182,7 +182,7 @@ impl BitSet {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let mut set = BitSet::with_capacity(64);
@@ -201,7 +201,7 @@ impl BitSet {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let mut set = BitSet::new();
@@ -216,7 +216,7 @@ impl BitSet {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let mut set = BitSet::with_capacity(128);
@@ -234,14 +234,14 @@ impl BitSet {
         self.layers.as_mut_slice()
     }
 
-    /// Convert in-place into an [AtomicBitSet].
+    /// Convert in-place into an [`AtomicBitSet`].
     ///
     /// Atomic bit sets uses structural sharing with the current set, so this
     /// is a constant time `O(1)` operation.
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let mut set = BitSet::with_capacity(1024);
@@ -259,11 +259,11 @@ impl BitSet {
         }
     }
 
-    /// Convert in-place into a reference to an [AtomicBitSet].
+    /// Convert in-place into a reference to an [`AtomicBitSet`].
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let set = BitSet::with_capacity(1024);
@@ -281,7 +281,7 @@ impl BitSet {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let mut set = BitSet::with_capacity(64);
@@ -307,11 +307,11 @@ impl BitSet {
     ///
     /// # Panics
     ///
-    /// Panics if the position does not fit within the capacity of the [BitSet].
+    /// Panics if the position does not fit within the capacity of the [`BitSet`].
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let mut set = BitSet::with_capacity(64);
@@ -342,7 +342,7 @@ impl BitSet {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let mut set = BitSet::with_capacity(64);
@@ -370,7 +370,7 @@ impl BitSet {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     /// let mut set = BitSet::with_capacity(128);
     /// assert_eq!(128, set.capacity());
@@ -422,7 +422,7 @@ impl BitSet {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let mut set = BitSet::with_capacity(128);
@@ -436,7 +436,7 @@ impl BitSet {
     ///
     /// Draining one bit at a time.
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let mut set = BitSet::with_capacity(128);
@@ -453,7 +453,7 @@ impl BitSet {
     ///
     /// Saving the state of the draining iterator.
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let mut set = BitSet::with_capacity(128);
@@ -490,11 +490,11 @@ impl BitSet {
     /// draining at a specific point.
     ///
     /// Resuming a drain from a snapshot can be more efficient in certain
-    /// scenarios, like if the [BitSet] is very large.
+    /// scenarios, like if the [`BitSet`] is very large.
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let mut set = BitSet::with_capacity(128);
@@ -520,7 +520,7 @@ impl BitSet {
     ///
     /// Trying to snapshot from an empty draining iterator:
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let mut set = BitSet::with_capacity(128);
@@ -547,11 +547,11 @@ impl BitSet {
     /// their index.
     ///
     /// Note that iterator allocates a vector with a size matching the number of
-    /// layers in the [BitSet].
+    /// layers in the [`BitSet`].
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let mut set = BitSet::with_capacity(128);
@@ -605,7 +605,7 @@ impl Default for BitSet {
 #[derive(Clone, Copy)]
 pub struct DrainSnapshot(usize, usize);
 
-/// A draining iterator of a [BitSet].
+/// A draining iterator of a [`BitSet`].
 ///
 /// See [BitSet::drain] for examples.
 pub struct Drain<'a> {
@@ -724,7 +724,7 @@ impl Iterator for Drain<'_> {
     }
 }
 
-/// An iterator over a [BitSet].
+/// An iterator over a [`BitSet`].
 ///
 /// See [BitSet::iter] for examples.
 pub struct Iter<'a> {
@@ -786,18 +786,16 @@ impl Iterator for Iter<'_> {
     }
 }
 
-/// The same as [BitSet], except it provides atomic methods.
+/// The same as [`BitSet`], except it provides atomic methods.
 ///
-/// [BitSet] and [AtomicBitSet]'s are guaranteed to have an identical memory
-/// layout, so while it would require `unsafe`, transmuting or coercing between
-/// the two is sound assuming the proper synchronization is respected.
+/// [`BitSet`] and [`AtomicBitSet`]'s are guaranteed to have an identical memory
+/// layout, so they support zero-cost back and forth conversion.
 ///
-/// We provide the following methods to accomplish this from an atomic bitset,
-/// to a local (non atomic) one: [as_local_mut] for borrowing mutably and
-/// [into_local].
+/// The [`as_local_mut`] and [`into_local`] methods can be used to convert to a
+/// local unsynchronized bitset.
 ///
-/// [as_local_mut]: AtomicBitSet::as_local_mut
-/// [into_local]: AtomicBitSet::into_local
+/// [`as_local_mut`]: AtomicBitSet::as_local_mut
+/// [`into_local`]: AtomicBitSet::into_local
 #[repr(C)]
 pub struct AtomicBitSet {
     /// Layers of bits.
@@ -811,7 +809,7 @@ impl AtomicBitSet {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::AtomicBitSet;
     ///
     /// let set = AtomicBitSet::new();
@@ -829,7 +827,7 @@ impl AtomicBitSet {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::AtomicBitSet;
     ///
     /// let set = AtomicBitSet::new();
@@ -841,18 +839,18 @@ impl AtomicBitSet {
 
     /// Set the given bit atomically.
     ///
-    /// We can do this to an [AtomicBitSet] since the required modifications
+    /// We can do this to an [`AtomicBitSet`] since the required modifications
     /// that needs to be performed against each layer are idempotent of the
     /// order in which they are applied.
     ///
     /// # Panics
     ///
     /// Call will panic if the position is not within the capacity of the
-    /// [AtomicBitSet].
+    /// [`AtomicBitSet`].
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let set = BitSet::with_capacity(1024).into_atomic();
@@ -879,13 +877,13 @@ impl AtomicBitSet {
     /// Convert in-place into a a [`BitSet`].
     ///
     /// This is safe, since this function requires exclusive owned access to the
-    /// [AtomicBitSet], and we assert that their memory layouts are identical.
+    /// [`AtomicBitSet`], and we assert that their memory layouts are identical.
     ///
     /// [`BitSet`]: BitSet
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let mut set = BitSet::new();
@@ -907,14 +905,14 @@ impl AtomicBitSet {
     /// Convert in-place into a mutable reference to a [`BitSet`].
     ///
     /// This is safe, since this function requires exclusive mutable access to
-    /// the [AtomicBitSet], and we assert that their memory layouts are
+    /// the [`AtomicBitSet`], and we assert that their memory layouts are
     /// identical.
     ///
     /// [`BitSet`]: BitSet
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let mut set = BitSet::with_capacity(1024).into_atomic();
@@ -969,7 +967,7 @@ impl Layer {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::Layer;
     ///
     /// assert_eq!(vec![0usize; 4], Layer::with_capacity(4));
@@ -988,7 +986,7 @@ impl Layer {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::Layer;
     ///
     /// let mut layer = Layer::with_capacity(2);
@@ -1013,7 +1011,7 @@ impl Layer {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::Layer;
     ///
     /// let mut layer = Layer::with_capacity(2);
@@ -1030,7 +1028,7 @@ impl Layer {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::Layer;
     ///
     /// let mut layer = Layer::with_capacity(2);
@@ -1048,7 +1046,7 @@ impl Layer {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::Layer;
     ///
     /// let mut layer = Layer::with_capacity(0);
@@ -1080,7 +1078,7 @@ impl Layer {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::Layer;
     ///
     /// let mut layer = Layer::with_capacity(2);
@@ -1095,7 +1093,7 @@ impl Layer {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::Layer;
     ///
     /// let mut layer = Layer::with_capacity(2);
@@ -1113,7 +1111,7 @@ impl Layer {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::Layer;
     ///
     /// let mut layer = Layer::with_capacity(2);
@@ -1263,7 +1261,7 @@ impl AtomicLayer {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use uniset::BitSet;
     ///
     /// let set = BitSet::with_capacity(64);
