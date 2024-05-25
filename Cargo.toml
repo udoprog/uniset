@@ -13,6 +13,9 @@ license = "MIT OR Apache-2.0"
 keywords = ["bitset", "containers"]
 categories = ["algorithms"]
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(uniset_op_count)'] }
+
 [features]
 default = ["vec-safety"]
 vec-safety = []

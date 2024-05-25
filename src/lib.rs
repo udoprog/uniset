@@ -479,7 +479,7 @@ impl BitSet {
             layers: self.layers.as_mut_slice(),
             index: 0,
             depth,
-            #[cfg(feature = "test-op-count")]
+            #[cfg(uniset_op_count)]
             op_count: 0,
         }
     }
@@ -538,7 +538,7 @@ impl BitSet {
             layers: self.layers.as_mut_slice(),
             index,
             depth,
-            #[cfg(feature = "test-op-count")]
+            #[cfg(uniset_op_count)]
             op_count: 0,
         }
     }
@@ -570,7 +570,7 @@ impl BitSet {
             masks: [0; MAX_LAYERS],
             index: 0,
             depth,
-            #[cfg(feature = "test-op-count")]
+            #[cfg(uniset_op_count)]
             op_count: 0,
         }
     }
@@ -612,7 +612,7 @@ pub struct Drain<'a> {
     layers: &'a mut [Layer],
     index: usize,
     depth: usize,
-    #[cfg(feature = "test-op-count")]
+    #[cfg(uniset_op_count)]
     pub(crate) op_count: usize,
 }
 
@@ -640,7 +640,7 @@ impl Iterator for Drain<'_> {
         }
 
         loop {
-            #[cfg(feature = "test-op-count")]
+            #[cfg(uniset_op_count)]
             {
                 self.op_count += 1;
             }
@@ -732,7 +732,7 @@ pub struct Iter<'a> {
     masks: [u8; MAX_LAYERS],
     index: usize,
     depth: usize,
-    #[cfg(feature = "test-op-count")]
+    #[cfg(uniset_op_count)]
     pub(crate) op_count: usize,
 }
 
@@ -745,7 +745,7 @@ impl Iterator for Iter<'_> {
         }
 
         loop {
-            #[cfg(feature = "test-op-count")]
+            #[cfg(uniset_op_count)]
             {
                 self.op_count += 1;
             }
@@ -1642,7 +1642,7 @@ mod tests {
             let mut drain = set.drain();
             assert_eq!(positions, (&mut drain).collect::<Vec<_>>());
 
-            #[cfg(feature = "test-op-count")]
+            #[cfg(uniset_op_count)]
             {
                 let op_count = drain.op_count;
                 assert_eq!($expected_op_count, op_count);
@@ -1670,7 +1670,7 @@ mod tests {
             let mut iter = set.iter();
             assert_eq!(positions, (&mut iter).collect::<Vec<_>>());
 
-            #[cfg(feature = "test-op-count")]
+            #[cfg(uniset_op_count)]
             {
                 let op_count = iter.op_count;
                 assert_eq!($expected_op_count, op_count);
