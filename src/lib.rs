@@ -47,11 +47,18 @@
 
 #![deny(missing_docs)]
 #![allow(clippy::identity_op)]
+#![no_std]
 
-use std::{
-    fmt, iter, mem, ops, slice,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+extern crate alloc;
+
+use core::fmt;
+use core::iter;
+use core::mem;
+use core::ops;
+use core::slice;
+use core::sync::atomic::{AtomicUsize, Ordering};
+
+use alloc::vec::Vec;
 
 #[cfg(feature = "vec-safety")]
 use self::vec_safety::Layers;
@@ -974,7 +981,7 @@ impl Layer {
     /// ```
     pub fn with_capacity(cap: usize) -> Layer {
         // Create an already initialized layer of bits.
-        let mut vec = mem::ManuallyDrop::new(vec![0usize; cap]);
+        let mut vec = mem::ManuallyDrop::new(alloc::vec![0usize; cap]);
 
         Layer {
             bits: vec.as_mut_ptr(),
@@ -1343,7 +1350,7 @@ fn round_capacity_up(cap: usize) -> usize {
     }
 
     if cap > 1 << 63 {
-        return std::usize::MAX;
+        return usize::MAX;
     }
 
     // Cap is already a power of two.
@@ -1374,7 +1381,13 @@ where
 
 #[cfg(feature = "vec-safety")]
 mod vec_safety {
-    use std::{iter, marker, mem, ops, slice};
+    use core::iter;
+    use core::marker;
+    use core::mem;
+    use core::ops;
+    use core::slice;
+
+    use alloc::vec::Vec;
 
     /// Storage for layers.
     ///
@@ -1542,6 +1555,9 @@ mod vec_safety {
 #[cfg(test)]
 mod tests {
     use super::{bit_set_layout, AtomicBitSet, BitSet};
+
+    use alloc::vec;
+    use alloc::vec::Vec;
 
     #[test]
     fn assert_send_and_sync() {
@@ -1734,11 +1750,8 @@ mod tests {
         assert_eq!(16, round_capacity_up(1));
         assert_eq!(32, round_capacity_up(17));
         assert_eq!(32, round_capacity_up(32));
-        assert_eq!(
-            (std::usize::MAX >> 1) + 1,
-            round_capacity_up(std::usize::MAX >> 1)
-        );
-        assert_eq!(std::usize::MAX, round_capacity_up((1usize << 63) + 1));
+        assert_eq!((usize::MAX >> 1) + 1, round_capacity_up(usize::MAX >> 1));
+        assert_eq!(usize::MAX, round_capacity_up((1usize << 63) + 1));
     }
 
     #[test]
