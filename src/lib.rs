@@ -1200,7 +1200,7 @@ where
     }
 }
 
-impl<'a> PartialEq<Layer> for &'a [usize] {
+impl PartialEq<Layer> for &[usize] {
     fn eq(&self, other: &Layer) -> bool {
         *self == other.as_slice()
     }
