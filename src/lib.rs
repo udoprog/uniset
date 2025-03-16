@@ -1589,7 +1589,7 @@ mod tests {
         layer0[15] = 1 << 63;
 
         let mut layer1 = [0usize; 1];
-        layer1[0] = 1 << 15 | 1 << 2 | 1 << 1 | 1;
+        layer1[0] = (1 << 15) | (1 << 2) | (1 << 1) | 1;
 
         assert_eq!(vec![&layer0[..], &layer1[..]], set.as_slice());
     }
