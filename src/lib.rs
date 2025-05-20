@@ -261,7 +261,7 @@ impl BitSet {
     /// ```
     pub fn into_atomic(mut self) -> AtomicBitSet {
         AtomicBitSet {
-            layers: convert_layers(mem::replace(&mut self.layers, Layers::new())),
+            layers: convert_layers(mem::take(&mut self.layers)),
             cap: mem::replace(&mut self.cap, 0),
         }
     }
@@ -904,7 +904,7 @@ impl AtomicBitSet {
     /// ```
     pub fn into_local(mut self) -> BitSet {
         BitSet {
-            layers: convert_layers(mem::replace(&mut self.layers, Layers::new())),
+            layers: convert_layers(mem::take(&mut self.layers)),
             cap: mem::replace(&mut self.cap, 0),
         }
     }
