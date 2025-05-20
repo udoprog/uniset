@@ -14,14 +14,6 @@ support structural sharing between the [local] and [atomic] bitsets.
 
 <br>
 
-## Features
-
-* `vec-safety` - Avoid relying on the assumption that `&mut Vec<T>` can be
-  safely coerced to `&mut Vec<U>` if `T` and `U` have an identical memory
-  layouts (enabled by default, [issue #1]).
-
-<br>
-
 ## Examples
 
 ```rust

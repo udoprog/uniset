@@ -17,10 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: dtolnay/rust-toolchain@1.56
+    - uses: dtolnay/rust-toolchain@1.84
     - run: cargo build --lib
     - run: cargo build --all-features --lib
-    - run: cargo build --no-default-features --lib
+    - run: cargo build --no-default-features --features alloc --lib
 
   test:
     runs-on: ubuntu-latest

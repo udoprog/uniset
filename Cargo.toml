@@ -3,7 +3,7 @@ name = "uniset"
 version = "0.2.4"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 edition = "2018"
-rust-version = "1.56"
+rust-version = "1.84"
 description = "A hierarchical, growable bit set with support for in-place atomic operations."
 documentation = "https://docs.rs/uniset"
 readme = "README.md"
@@ -17,8 +17,9 @@ categories = ["algorithms"]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(uniset_op_count)'] }
 
 [features]
-default = ["vec-safety"]
-vec-safety = []
+default = ["alloc"]
+std = []
+alloc = []
 
 [dev-dependencies]
 hibitset = "0.6.3"
