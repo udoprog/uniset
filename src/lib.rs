@@ -11,14 +11,6 @@
 //!
 //! <br>
 //!
-//! ## Features
-//!
-//! * `vec-safety` - Avoid relying on the assumption that `&mut Vec<T>` can be
-//!   safely coerced to `&mut Vec<U>` if `T` and `U` have an identical memory
-//!   layouts (enabled by default, [issue #1]).
-//!
-//! <br>
-//!
 //! ## Examples
 //!
 //! ```
@@ -49,21 +41,22 @@
 #![allow(clippy::identity_op)]
 #![no_std]
 
+#[cfg(feature = "alloc")]
 extern crate alloc;
+
+#[cfg(not(feature = "alloc"))]
+compile_error!("The `alloc` feature is required to use this crate.");
 
 use core::fmt;
 use core::iter;
-use core::mem;
+use core::mem::{replace, take, ManuallyDrop};
 use core::ops;
 use core::slice;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use alloc::vec::Vec;
 
-#[cfg(feature = "vec-safety")]
-use self::vec_safety::Layers;
-#[cfg(not(feature = "vec-safety"))]
-type Layers<T> = Vec<T>;
+use self::layers::Layers;
 
 /// A private marker trait that promises that the implementing type has an
 /// identical memory layout to another Layer].
@@ -81,7 +74,7 @@ unsafe trait CoerceLayer {
 }
 
 /// Bits in a single usize.
-const BITS: usize = mem::size_of::<usize>() * 8;
+const BITS: usize = usize::BITS as usize;
 const BITS_SHIFT: usize = BITS.trailing_zeros() as usize;
 const MAX_LAYERS: usize = BITS / 4;
 
@@ -261,8 +254,8 @@ impl BitSet {
     /// ```
     pub fn into_atomic(mut self) -> AtomicBitSet {
         AtomicBitSet {
-            layers: convert_layers(mem::take(&mut self.layers)),
-            cap: mem::replace(&mut self.cap, 0),
+            layers: convert_layers(take(&mut self.layers)),
+            cap: replace(&mut self.cap, 0),
         }
     }
 
@@ -904,8 +897,8 @@ impl AtomicBitSet {
     /// ```
     pub fn into_local(mut self) -> BitSet {
         BitSet {
-            layers: convert_layers(mem::take(&mut self.layers)),
-            cap: mem::replace(&mut self.cap, 0),
+            layers: convert_layers(take(&mut self.layers)),
+            cap: replace(&mut self.cap, 0),
         }
     }
 
@@ -981,7 +974,12 @@ impl Layer {
     /// ```
     pub fn with_capacity(cap: usize) -> Layer {
         // Create an already initialized layer of bits.
-        let mut vec = mem::ManuallyDrop::new(alloc::vec![0usize; cap]);
+        let mut vec = ManuallyDrop::new(Vec::<usize>::with_capacity(cap));
+
+        // SAFETY: We just allocated the vector to fit `cap` number of elements.
+        unsafe {
+            vec.as_mut_ptr().write_bytes(0, cap);
+        }
 
         Layer {
             bits: vec.as_mut_ptr(),
@@ -1062,23 +1060,25 @@ impl Layer {
     /// assert_eq!(vec![0, 0], layer);
     /// ```
     pub fn grow(&mut self, new: usize) {
+        let cap = self.cap;
+
         // Nothing to do.
-        if self.cap >= new {
+        if cap >= new {
             return;
         }
 
-        let mut vec =
-            mem::ManuallyDrop::new(unsafe { Vec::from_raw_parts(self.bits, self.cap, self.cap) });
-        vec.reserve_exact(new - self.cap);
+        self.with_mut_vec(|vec| {
+            vec.reserve_exact(new - cap);
 
-        // Initialize new values.
-        for _ in self.cap..new {
-            vec.push(0usize);
-        }
+            // SAFETY: We've reserved sufficient space for the grown layer just
+            // above.
+            unsafe {
+                vec.as_mut_ptr().add(cap).write_bytes(0, new - cap);
+                vec.set_len(new);
+            }
 
-        debug_assert!(vec.len() == vec.capacity());
-        self.bits = vec.as_mut_ptr();
-        self.cap = vec.capacity();
+            debug_assert_eq!(vec.len(), vec.capacity());
+        });
     }
 
     /// Set the given bit in this layer.
@@ -1157,6 +1157,30 @@ impl Layer {
         debug_assert!(slot < self.cap);
         &mut *self.bits.add(slot)
     }
+
+    #[inline(always)]
+    fn with_mut_vec<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut Vec<usize>),
+    {
+        struct Restore<'a> {
+            layer: &'a mut Layer,
+            vec: ManuallyDrop<Vec<usize>>,
+        }
+
+        impl Drop for Restore<'_> {
+            #[inline]
+            fn drop(&mut self) {
+                self.layer.bits = self.vec.as_mut_ptr();
+                self.layer.cap = self.vec.capacity();
+            }
+        }
+
+        let vec = ManuallyDrop::new(unsafe { Vec::from_raw_parts(self.bits, self.cap, self.cap) });
+
+        let mut restore = Restore { layer: self, vec };
+        f(&mut restore.vec);
+    }
 }
 
 impl From<Vec<usize>> for Layer {
@@ -1165,7 +1189,7 @@ impl From<Vec<usize>> for Layer {
             value.shrink_to_fit();
         }
 
-        let mut value = mem::ManuallyDrop::new(value);
+        let mut value = ManuallyDrop::new(value);
 
         Self {
             bits: value.as_mut_ptr(),
@@ -1175,8 +1199,9 @@ impl From<Vec<usize>> for Layer {
 }
 
 impl Clone for Layer {
+    #[inline]
     fn clone(&self) -> Self {
-        let mut vec = mem::ManuallyDrop::new(self.as_slice().to_vec());
+        let mut vec = ManuallyDrop::new(self.as_slice().to_vec());
 
         Self {
             bits: vec.as_mut_ptr(),
@@ -1237,6 +1262,7 @@ impl<I: slice::SliceIndex<[usize]>> ops::IndexMut<I> for Layer {
 }
 
 impl Drop for Layer {
+    #[inline]
     fn drop(&mut self) {
         unsafe {
             drop(Vec::from_raw_parts(self.bits, self.cap, self.cap));
@@ -1286,6 +1312,7 @@ impl AtomicLayer {
     }
 
     /// Return the given layer as a slice.
+    #[inline]
     fn as_slice(&self) -> &[AtomicUsize] {
         unsafe { slice::from_raw_parts(self.bits, self.cap) }
     }
@@ -1299,12 +1326,14 @@ impl AtomicLayer {
 }
 
 impl AsRef<[AtomicUsize]> for AtomicLayer {
+    #[inline]
     fn as_ref(&self) -> &[AtomicUsize] {
         self.as_slice()
     }
 }
 
 impl Drop for AtomicLayer {
+    #[inline]
     fn drop(&mut self) {
         // Safety: We keep track of the capacity internally.
         unsafe {
@@ -1313,6 +1342,7 @@ impl Drop for AtomicLayer {
     }
 }
 
+#[inline]
 fn round_bits_up(value: usize) -> usize {
     let m = value % BITS;
 
@@ -1325,6 +1355,7 @@ fn round_bits_up(value: usize) -> usize {
 
 /// Helper function to generate the necessary layout of the bit set layers
 /// given a desired `capacity`.
+#[inline]
 fn bit_set_layout(capacity: usize) -> impl Iterator<Item = LayerLayout> + Clone {
     let mut cap = round_bits_up(capacity);
 
@@ -1344,6 +1375,7 @@ fn bit_set_layout(capacity: usize) -> impl Iterator<Item = LayerLayout> + Clone 
 }
 
 /// Round up the capacity to be the closest power of 2.
+#[inline]
 fn round_capacity_up(cap: usize) -> usize {
     if cap == 0 {
         return 0;
@@ -1365,26 +1397,27 @@ fn round_capacity_up(cap: usize) -> usize {
 
 /// Convert a vector into a different type, assuming the constituent type has
 /// an identical layout to the converted type.
+#[inline]
 fn convert_layers<T, U>(vec: Layers<T>) -> Layers<U>
 where
     T: CoerceLayer<Target = U>,
 {
-    debug_assert!(mem::size_of::<T>() == mem::size_of::<U>());
-    debug_assert!(mem::align_of::<T>() == mem::align_of::<U>());
+    debug_assert_eq!(size_of::<T>(), size_of::<U>());
+    debug_assert_eq!(align_of::<T>(), align_of::<U>());
 
-    let mut vec = mem::ManuallyDrop::new(vec);
+    let mut vec = ManuallyDrop::new(vec);
 
     // Safety: we guarantee safety by requiring that `T` and `U` implements
     // `IsLayer`.
     unsafe { Layers::from_raw_parts(vec.as_mut_ptr() as *mut U, vec.len(), vec.capacity()) }
 }
 
-#[cfg(feature = "vec-safety")]
-mod vec_safety {
+mod layers {
     use core::iter;
     use core::marker;
-    use core::mem;
+    use core::mem::ManuallyDrop;
     use core::ops;
+    use core::ptr;
     use core::slice;
 
     use alloc::vec::Vec;
@@ -1409,49 +1442,57 @@ mod vec_safety {
 
     impl<T> Layers<T> {
         /// Note: Can't be a constant function :(.
-        pub(super) fn new() -> Self {
-            let mut vec = mem::ManuallyDrop::new(Vec::<T>::new());
-
+        #[inline]
+        pub(super) const fn new() -> Self {
             Self {
-                data: vec.as_mut_ptr(),
-                len: vec.len(),
-                cap: vec.capacity(),
+                data: ptr::dangling_mut(),
+                len: 0,
+                cap: 0,
                 _marker: marker::PhantomData,
             }
         }
 
+        #[inline]
         pub(super) fn as_mut_ptr(&mut self) -> *mut T {
             self.data
         }
 
+        #[inline]
         pub(super) fn len(&self) -> usize {
             self.len
         }
 
+        #[inline]
         pub(super) fn is_empty(&self) -> bool {
             self.len == 0
         }
 
+        #[inline]
         pub(super) fn capacity(&self) -> usize {
             self.cap
         }
 
+        #[inline]
         pub(super) fn as_mut_slice(&mut self) -> &mut [T] {
             unsafe { slice::from_raw_parts_mut(self.data, self.len) }
         }
 
+        #[inline]
         pub(super) fn as_slice(&self) -> &[T] {
             unsafe { slice::from_raw_parts(self.data as *const T, self.len) }
         }
 
+        #[inline]
         pub(super) fn last(&self) -> Option<&T> {
             self.as_slice().last()
         }
 
+        #[inline]
         pub(super) fn push(&mut self, value: T) {
-            self.as_vec(|vec| vec.push(value));
+            self.with_mut_vec(|vec| vec.push(value));
         }
 
+        #[inline]
         pub(super) unsafe fn from_raw_parts(data: *mut T, len: usize, cap: usize) -> Self {
             Self {
                 data,
@@ -1462,17 +1503,29 @@ mod vec_safety {
         }
 
         #[inline(always)]
-        fn as_vec<F>(&mut self, f: F)
+        fn with_mut_vec<F>(&mut self, f: F)
         where
             F: FnOnce(&mut Vec<T>),
         {
-            let mut vec = mem::ManuallyDrop::new(unsafe {
-                Vec::from_raw_parts(self.data, self.len, self.cap)
-            });
-            f(&mut vec);
-            self.data = vec.as_mut_ptr();
-            self.len = vec.len();
-            self.cap = vec.capacity();
+            struct Restore<'a, T> {
+                layers: &'a mut Layers<T>,
+                vec: ManuallyDrop<Vec<T>>,
+            }
+
+            impl<T> Drop for Restore<'_, T> {
+                #[inline]
+                fn drop(&mut self) {
+                    self.layers.data = self.vec.as_mut_ptr();
+                    self.layers.len = self.vec.len();
+                    self.layers.cap = self.vec.capacity();
+                }
+            }
+
+            let vec =
+                ManuallyDrop::new(unsafe { Vec::from_raw_parts(self.data, self.len, self.cap) });
+
+            let mut restore = Restore { layers: self, vec };
+            f(&mut restore.vec);
         }
     }
 
@@ -1487,11 +1540,11 @@ mod vec_safety {
     where
         T: Clone,
     {
+        #[inline]
         fn clone(&self) -> Self {
-            let mut vec = mem::ManuallyDrop::new(unsafe {
-                Vec::from_raw_parts(self.data, self.len, self.cap)
-            })
-            .clone();
+            let mut vec =
+                ManuallyDrop::new(unsafe { Vec::from_raw_parts(self.data, self.len, self.cap) })
+                    .clone();
 
             Self {
                 data: vec.as_mut_ptr(),
@@ -1541,11 +1594,12 @@ mod vec_safety {
     impl<T> iter::Extend<T> for Layers<T> {
         #[inline]
         fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-            self.as_vec(|vec| vec.extend(iter));
+            self.with_mut_vec(|vec| vec.extend(iter));
         }
     }
 
     impl<T> Drop for Layers<T> {
+        #[inline]
         fn drop(&mut self) {
             drop(unsafe { Vec::from_raw_parts(self.data, self.len, self.cap) });
         }
